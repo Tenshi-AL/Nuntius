@@ -27,3 +27,16 @@ Run the app either via the generated shortcut, or with the command:
 ```bash
 dotnet UI.dll --urls "http://localhost:8080"
 ```
+
+---
+# Usage
+## Original configuration
+Go to the root of the application and in the appsettings.json file, find the TelegramConfiguration section; it looks approximately like this:
+```json
+"TelegramConfiguration":{
+    "ApiId": 1000000000000000,
+    "ApiHash": "000000000000000000000",
+    "PhoneNumber": "+00000000000000000"
+  },
+```
+Replace this data with your own.
