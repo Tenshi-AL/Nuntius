@@ -1,0 +1,56 @@
+﻿@page "/Authorization"
+@using Domain.Interfaces
+@using Domain.Models
+
+<HxCard>
+    <HeaderTemplate>Авторизація Telegram</HeaderTemplate>
+    <BodyTemplate>
+        <EditForm Model="@Auth" OnValidSubmit="OnAuthorization">
+            <DataAnnotationsValidator />
+
+            <HxInputText 
+                Enabled="@(ConfigNeeded is not null)"
+                @bind-Value="Auth.Code"
+                Label=@(ConfigNeeded is not null ? "Вам у Telegram надіслано: " + ConfigNeeded : "Ви успішно авторизовані!")
+                Placeholder="Дані для входу в Telegram"/>
+            
+            <HxSubmit
+                Enabled="@(ConfigNeeded is not null)"
+                Color="ThemeColor.Primary">
+                Авторизація
+            </HxSubmit>
+        </EditForm>
+    </BodyTemplate>
+</HxCard>
+
+@code {
+    [Inject] public required ITelegramAuthorization TelegramAuthorization { get; set; }
+    [Inject] public required IHxMessengerService Messenger { get; set; }
+    
+    
+    private TelegramAuth Auth { get; set; } = new();
+    private string? ConfigNeeded { get; set; }
+
+    protected override void OnInitialized()
+    {
+        ConfigNeeded = TelegramAuthorization.ConfigNeeded;
+    }
+
+    private async Task OnAuthorization()
+    {
+        try
+        {
+            await TelegramAuthorization.DoLogin(Auth.Code!);
+            ConfigNeeded = TelegramAuthorization.ConfigNeeded;
+
+            if (ConfigNeeded is not null)
+                Messenger.AddWarning("Помилка авторизації");
+            else
+                Messenger.AddInformation("Успішна авторизація");
+        }
+        catch (Exception e)
+        {
+            Messenger.AddWarning(title: "Кілька невдалих спроб, зачекайте!", message: e.Message);
+        }
+    }
+}

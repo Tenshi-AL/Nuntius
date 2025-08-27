@@ -1,0 +1,65 @@
+﻿@using Domain.Models
+@using Microsoft.Extensions.Caching.Memory
+@using TL
+@using Chat = Domain.Models.Chat
+@using WTelegram
+
+@if (_userChats is not null)
+{
+    <HxListGroup>
+        @foreach (var chatBase in _userChats.Values)
+        {
+            if (chatBase is Channel { IsGroup: true, IsActive: true } group)
+            {
+                @if (group.flags.HasFlag(Channel.Flags.forum))
+                {
+                    <ForumCard
+                        Title="@group.title"
+                        Id="@group.id"/>
+                }
+                else
+                {
+                    <ChatCard 
+                        Title="@group.title" 
+                        Id="@group.id"/>
+                }
+            }
+        
+        }
+    </HxListGroup>
+}
+else
+{
+    <HxSpinner />
+}
+
+@code {
+    /// <summary>
+    /// Екземпляр кешу
+    /// </summary>
+    [Inject] public required IMemoryCache MemoryCache { get; set; }
+    /// <summary>
+    /// WTelegram клієнт
+    /// </summary>
+    [Inject] public required Client Client { get; set; }
+    /// <summary>
+    /// Список усіх чатів користувача
+    /// </summary>
+    private Dictionary<long, ChatBase>? _userChats;
+    
+    protected override async Task OnInitializedAsync()
+    {
+        if (!MemoryCache.TryGetValue("chats", out _userChats))
+        {
+            var allChats = await Client.Messages_GetAllChats();
+            _userChats = allChats.chats;
+            
+            if (_userChats is not null)
+            {
+                MemoryCache.Set("chats",
+                    _userChats,
+                    new MemoryCacheEntryOptions().SetAbsoluteExpiration(TimeSpan.FromMinutes(2)));
+            }
+        }
+    }
+}

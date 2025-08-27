@@ -1,0 +1,17 @@
+﻿@inherits LayoutComponentBase
+
+<HxMessenger Position="ToastContainerPosition.BottomEnd" />
+<HxMessageBoxHost />
+
+<div class="d-md-flex min-vh-100">
+    <NavMenu />
+    <div class="main p-4 flex-grow-1">
+        @Body
+    </div>
+</div>
+
+<div id="blazor-error-ui" data-nosnippet>
+    Сталася непередбачена помилка.
+    <a href="." class="reload">Перезавантажити</a>
+    <span class="dismiss">🗙</span>
+</div>

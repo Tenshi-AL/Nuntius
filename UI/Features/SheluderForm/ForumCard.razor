@@ -1,0 +1,67 @@
+﻿@using Domain.Models
+@using Microsoft.Extensions.Caching.Memory
+@using TL
+@using Chat = Domain.Models.Chat
+@using WTelegram
+<HxAccordion>
+    <HxAccordionItem>
+        <HeaderTemplate>@Title</HeaderTemplate>
+        <BodyTemplate>
+            @if (ForumTopics is not null)
+            {
+                @foreach (var topicBase in ForumTopics.topics)
+                {
+                    try
+                    {
+                        <TopicCard
+                            Title="@topicBase.Title"
+                            ForumId="@Id"
+                            TopicId="@topicBase.ID"/>
+                    }
+                    catch (Exception e)
+                    {
+                        //
+                    }
+                }
+            }
+            else
+            {
+                <HxSpinner />
+            }
+        </BodyTemplate>
+    </HxAccordionItem>
+</HxAccordion>
+
+@code {
+    /// <summary>
+    /// WTelegram клієнт
+    /// </summary>
+    [Inject] public required Client Client { get; set; }
+    /// <summary>
+    /// Екземпляр кешу
+    /// </summary>
+    [Inject] public required IMemoryCache MemoryCache { get; set; }
+    [Parameter, EditorRequired] public string Title { get; set; } = string.Empty;
+    [Parameter, EditorRequired] public long Id { get; set; }
+    /// <summary>
+    /// Об’єкт, що містить список усіх тем форуму
+    /// </summary>
+    public required Messages_ForumTopics? ForumTopics;
+    
+    protected override async Task OnInitializedAsync()
+    {
+        if (!MemoryCache.TryGetValue(Id, out ForumTopics))
+        {
+            var allChats = await Client.Messages_GetAllChats();
+            var currentChannel = allChats.chats[Id] as Channel;
+            ForumTopics = await Client.Channels_GetForumTopics(currentChannel);
+
+            if (ForumTopics is not null)
+            {
+                MemoryCache.Set(Id,
+                    ForumTopics,
+                    new MemoryCacheEntryOptions().SetAbsoluteExpiration(TimeSpan.FromMinutes(2)));
+            }
+        }
+    }
+}

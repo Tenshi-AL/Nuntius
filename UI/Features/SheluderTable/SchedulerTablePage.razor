@@ -1,0 +1,68 @@
+﻿@page "/SchedulerTable"
+@using Domain.Interfaces
+@using Domain.Models
+
+<style>
+    .scrollable-table-container {
+        height: 300px;
+        overflow: auto;
+    }
+</style>
+
+<HxListLayout Title="Завдання" TFilterModel="HxListLayout.NoFilter">
+    <DataTemplate>
+        <HxGrid TItem="JobDetail"
+                DataProvider="GetGridData"
+                SelectionEnabled="false"
+                ContentNavigationMode="GridContentNavigationMode.InfiniteScroll"
+                TableContainerCssClass="scrollable-table-container"
+                HeaderRowCssClass="sticky-top"
+                Responsive="true">
+            <Columns>
+                <HxGridColumn HeaderText="Назва завдання" ItemTextSelector="employee => employee.JobKey" />
+                <HxGridColumn HeaderText="Час наступного виконання" ItemTextSelector="employee => employee.JobScheduledTime" />
+                <HxGridColumn HeaderText="Назва групи" ItemTextSelector="employee => employee.JobGroup" />
+                <HxGridColumn HeaderText="Назва тригера" ItemTextSelector="employee => employee.JobTriggerName" />
+
+                <HxContextMenuGridColumn Context="item">
+                    <HxContextMenu>
+                        <HxContextMenuItem Text="Видалити" Icon="BootstrapIcon.Trash" OnClick="()=>HxContextMenuItemOnClick(item.JobKey)"/>
+                    </HxContextMenu>
+                </HxContextMenuGridColumn>
+                
+            </Columns>
+        </HxGrid>
+    </DataTemplate>
+</HxListLayout>
+
+@code {
+    [Inject] public required IHxMessengerService Messenger { get; set; }
+    [Inject] public required ILogger<SchedulerTablePage> Logger { get; set; }
+    [Inject] public required ISchedulerService SchedulerService { get; set; }
+
+    
+    private async Task<GridDataProviderResult<JobDetail>> GetGridData(GridDataProviderRequest<JobDetail> request)
+    {
+        var jobDetailModels = await SchedulerService.GetScheduledJobListAsync();
+        return new GridDataProviderResult<JobDetail>()
+        {
+            Data = jobDetailModels,
+            TotalCount = jobDetailModels?.Count
+        };
+    }
+
+    private async Task HxContextMenuItemOnClick(string jobKey)
+    {
+        try
+        {
+            await SchedulerService.RemoveJob(jobKey);
+            Messenger.AddInformation("Завдання успішно видалено");
+        }
+        catch (Exception e)
+        {
+            Logger.LogError(e,"Помилка видалення завдання.");
+            Messenger.AddError("Помилка при видаленні, перевірте логи для деталей!");
+        }
+    }
+
+}

@@ -1,0 +1,35 @@
+﻿@using Domain.Interfaces
+<HxListGroupItem CssClass="d-flex justify-content-between align-items-start">
+    <div class="ms-2 me-auto">
+        <div class="fw-bold">@Title</div>
+        @Id
+    </div>
+    
+    <HxSwitch bind-Value="IsAdded" ValueChanged="HandleValueChanged" ValueExpression="() => IsAdded"/>
+</HxListGroupItem>
+
+@code {
+    [Parameter, EditorRequired] public string Title { get; set; } = string.Empty;
+    [Parameter, EditorRequired] public long Id { get; set; }
+
+    [Inject] public required IHxMessengerService Messenger { get; set; }
+    [Inject] public required ITaskSettingService TaskSettingService { get; set; }
+
+    private bool IsAdded;
+
+    protected override void OnInitialized()
+    {
+        IsAdded = TaskSettingService.Setting.Chats.Any(p => p.ChatId == Id);
+    }
+
+    private void HandleValueChanged(bool value)
+    {
+        IsAdded = value;
+        TaskSettingService.AddChat(Id, null);
+        
+        if (IsAdded) 
+            Messenger.AddInformation(message: "Чат успішно додано!");
+        else 
+            Messenger.AddInformation(message: "Чат успішно видалено!");
+    }
+}

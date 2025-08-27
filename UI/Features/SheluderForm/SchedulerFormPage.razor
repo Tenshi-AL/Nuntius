@@ -1,0 +1,123 @@
+﻿@page "/Scheduler"
+@using Domain.Interfaces
+@using Domain.Models
+@using UI.Extensions
+
+<HxCard>
+    <HeaderTemplate>Telegram Авторизація</HeaderTemplate>
+    <BodyTemplate>
+        <EditForm Model="@TaskSettingService.Setting" OnValidSubmit="HandleOnValidSubmit">
+            <DataAnnotationsValidator />
+            
+            <div class="row">
+                <div class="col">
+                    
+                    <!--    Назва завдання     -->
+                    <div class="mb-3">
+                        <HxInputText
+                            @bind-Value="TaskSettingService.Setting.Name"
+                            Label="Назва завдання"
+                            Placeholder="Рекламна кампанія"/>
+                    </div>
+
+                    <!--    Cron-вираз     -->
+                    <div class="mb-3">
+                        <HxInputText
+                            @bind-Value="TaskSettingService.Setting.CronExpression"
+                            Label="Cron-вираз"
+                            Placeholder="* * * * *"
+                            Hint="Ви можете скористатися ChatGPT для його генерації"/>
+                    </div>
+
+                    <!--    Текст повідомлення     -->
+                    <div class="mb-3">
+                        <HxInputTextArea
+                            Label="Текст повідомлення"
+                            Placeholder="Дорогий щоденнику..."
+                            @bind-Value="@TaskSettingService.Setting.Text"/>
+                    </div>
+
+                    <!--    Зображення     -->
+                    <div class="input-group mt-5">
+                        <div class="custom-file">
+                            <InputFile
+                                accept="image/*"
+                                OnChange="HandleFileOnChange"/>
+                        </div>
+                    </div>
+
+                </div>
+
+                <!--    Список чатів     -->
+                <div class="col">
+                    <ChatsList />
+                </div>
+            </div>
+            
+            <HxSubmit
+                Color="ThemeColor.Primary">
+                Створити завдання
+            </HxSubmit>
+            
+        </EditForm>
+    </BodyTemplate>
+</HxCard>
+
+@code {
+    [Inject] public required IHxMessengerService Messenger { get; set; }
+    [Inject] public required ISchedulerService SchedulerService { get; set; }
+    [Inject] public required ITaskSettingService TaskSettingService { get; set; }
+    [Inject] public required ILogger<SchedulerFormPage> Logger { get; set; }
+    
+    private IBrowserFile? BrowserFile { get; set; }
+    
+    /// <summary>
+    /// Обробник відправлення форми. Витягує зображення, створює
+    /// нове завдання на основі TaskSetting та залежно від результату
+    /// показує повідомлення.
+    /// </summary>
+    /// <param name="e">Контекст форми</param>
+    private async Task HandleOnValidSubmit(EditContext e)
+    {
+        if (TaskSettingService.Setting.Chats.Count == 0)
+        {
+            Messenger.AddWarning("Ви не додали жодного чату!");
+        }
+        else
+        {
+            try
+            {
+                if (BrowserFile is not null)
+                {
+                    TaskSettingService.Setting.ImageName = BrowserFile.Name;
+                    TaskSettingService.Setting.Image = await BrowserFile.ToByteArray();
+                }
+
+                await SchedulerService.ScheduleAsync(TaskSettingService.Setting);
+                Messenger.AddInformation("Завдання успішно створено!");
+            }
+            catch (Exception exception)
+            {
+                Logger.LogError(exception,"Помилка планування завдання.");
+                Messenger.AddError("Помилка під час планування завдання, перевірте логи для деталей!");
+            }
+            finally
+            {
+                TaskSettingService.Setting = new TaskSetting();
+                TaskSettingService.Setting.Chats = new List<Chat>();
+            }
+        }
+    }
+
+    /// <summary>
+    /// Обробник завантаження зображення. Просто бере
+    /// перший і єдиний файл і зберігає його у
+    /// IBrowserFile.
+    /// </summary>
+    /// <param name="e">InputFileChangeEventArgs</param>
+    private void HandleFileOnChange(InputFileChangeEventArgs e)
+    {
+        BrowserFile = e.GetMultipleFiles()[0];
+    }
+
+}
